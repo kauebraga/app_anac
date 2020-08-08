@@ -16,6 +16,7 @@ combinada <- lapply(files, fread) %>% rbindlist()
 
 data_cols <- combinada %>% select(id_combinada, 
                                   nr_voo, sg_empresa_icao,
+                                  sg_iata_origem, sg_iata_destino,
                                   hr_partida_real, dt_partida_real, sg_icao_origem,
                                   nm_municipio_origem, sg_uf_origem, nm_pais_origem, 
                                   hr_chegada_real, dt_chegada_real,
@@ -87,7 +88,8 @@ fwrite(data_brazil_dists_first, "data/flights_passengers_complete.csv")
 
 # sum number of pass_dist by day OD pair
 odmatrix_passdist <- data_brazil_dists_first[,
-                                             .(total_passdist = sum(pass_dist, na.rm = TRUE),
+                                             .(
+                                               total_passdist = sum(pass_dist, na.rm = TRUE),
                                                total_pass = sum(nr_passag_pagos, nr_passag_gratis, na.rm=T),
                                                total_dist = sum(distance, na.rm = TRUE),
                                                dist_pair = distance[1],
@@ -98,6 +100,7 @@ odmatrix_passdist <- data_brazil_dists_first[,
                                                lat_to = lat_to[1]
                                              ),
                                              by = .(name_muni_uf_from, name_muni_uf_to, 
+                                                    sg_iata_origem, sg_iata_destino,
                                                     date, year, month, day, day_week) ]
 
 
@@ -120,16 +123,17 @@ fwrite(odmatrix_passdist, "data/air_odmatrix.csv")
 
 # by month
 odmatrix_passdist_month <- odmatrix_passdist %>%
-  group_by(name_muni_uf_from, name_muni_uf_to, year, month) %>%
-  summarise(total_passdist = sum(total_passdist, na.rm = TRUE),
-             total_pass = sum(total_pass, na.rm=T),
-             total_dist = sum(total_dist, na.rm = TRUE),
-             dist_pair = dist_pair[1],
-             n_flights = sum(n_flights),
-             lon_from = lon_from[1],
-             lat_from = lat_from[1],
-             lon_to = lon_to[1],
-             lat_to = lat_to[1])
+  group_by(name_muni_uf_from, name_muni_uf_to, sg_iata_origem, sg_iata_destino, year, month) %>%
+  summarise(
+    total_passdist = sum(total_passdist, na.rm = TRUE),
+    total_pass = sum(total_pass, na.rm=T),
+    total_dist = sum(total_dist, na.rm = TRUE),
+    dist_pair = dist_pair[1],
+    n_flights = sum(n_flights),
+    lon_from = lon_from[1],
+    lat_from = lat_from[1],
+    lon_to = lon_to[1],
+    lat_to = lat_to[1])
 
 # export data
 fwrite(odmatrix_passdist_month, "data/air_odmatrix_month.csv")
