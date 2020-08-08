@@ -11,7 +11,7 @@ library(lubridate)
 
 set_token(fread("data-raw/mapbox_key.txt")$V1)
 
-# set options for portuguese
+# set highchart options for portuguese
 lang <- getOption("highcharter.lang")
 lang$decimalPoint <- ","
 lang$months <- c('Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro')
@@ -50,7 +50,7 @@ server <- function(input, output, session) {
       mutate(stroke = scales::rescale(total_pass, to = c(3, 15))) %>%
       # make tooltip
       mutate(rank = 1:n()) %>%
-      mutate(tooltip = sprintf('<p><strong>%s</strong><br><strong>Passageiros/mês:</strong> %s<br><strong>Rank:</strong> %s</p>',
+      mutate(tooltip = sprintf('<p><strong>%s</strong><br><strong>Passageiros/mês:</strong> %s<br><strong>Rank:</strong> %s<br><strong>Clique para mais detalhes</strong></p>',
                                od, total_pass, rank))
     
   })
