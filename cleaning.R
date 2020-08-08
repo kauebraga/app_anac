@@ -85,13 +85,12 @@ data_brazil_dists_first <- data_brazil_dists_first[!is.na(nr_passag_gratis)]
 fwrite(data_brazil_dists_first, "data/flights_passengers_complete.csv")
 
 
+# aggregate by day ----------------------------------------
 
 # sum number of pass_dist by day OD pair
 odmatrix_passdist <- data_brazil_dists_first[,
                                              .(
-                                               total_passdist = sum(pass_dist, na.rm = TRUE),
                                                total_pass = sum(nr_passag_pagos, nr_passag_gratis, na.rm=T),
-                                               total_dist = sum(distance, na.rm = TRUE),
                                                dist_pair = distance[1],
                                                n_flights = .N,
                                                lon_from = lon_from[1],
@@ -101,33 +100,32 @@ odmatrix_passdist <- data_brazil_dists_first[,
                                              ),
                                              by = .(name_muni_uf_from, name_muni_uf_to, 
                                                     sg_iata_origem, sg_iata_destino,
-                                                    date, year, month, day, day_week) ]
+                                                    date, year, month, day) ]
 
 
-# # filter flights after 01-02
-# odmatrix_passdist_filter <- odmatrix_passdist[date >= as.Date("2020-02-01")]
-# odmatrix_passdist_filter <- odmatrix_passdist_filter[date <= as.Date("2020-04-30")]
-# 
-# odmatrix_passdist_filter[, period := ifelse(between(date, as.Date("2020-02-01"), as.Date("2020-03-15")),
-#                                             "before", "after")]
-# 
-# # refactor
-# odmatrix_passdist_filter$period <- factor(odmatrix_passdist_filter$period,
-#                                           levels = c("before", "after"),
-#                                           labels = c("01Fev-15Mar", "16Mar-30Apri"))
 
+# filter only top 200 routes
+top_200 <- data_brazil_dists_first %>% 
+  group_by(sg_iata_origem, sg_iata_destino) %>% 
+  summarise(sum_pass = sum(nr_passag_pagos, nr_passag_gratis, na.rm=T)) %>% 
+  ungroup() %>%
+  arrange(desc(sum_pass)) %>%
+  mutate(rank = 1:n()) %>%
+  filter(rank <= 200) %>%
+  mutate(pair = paste0(sg_iata_origem, "-", sg_iata_destino))
 
+# filter only top 200 from data
+odmatrix_passdist_top200 <- odmatrix_passdist %>% filter(paste0(sg_iata_origem, "-", sg_iata_destino) %in% top_200$pair)
 
 # export data
-fwrite(odmatrix_passdist, "data/air_odmatrix.csv")
+fwrite(odmatrix_passdist_top200, "data/air_odmatrix.csv")
 
-# by month
-odmatrix_passdist_month <- odmatrix_passdist %>%
+# aggregate by month ----------------------------------------
+
+odmatrix_passdist_month <- odmatrix_passdist_top200 %>%
   group_by(name_muni_uf_from, name_muni_uf_to, sg_iata_origem, sg_iata_destino, year, month) %>%
   summarise(
-    total_passdist = sum(total_passdist, na.rm = TRUE),
     total_pass = sum(total_pass, na.rm=T),
-    total_dist = sum(total_dist, na.rm = TRUE),
     dist_pair = dist_pair[1],
     n_flights = sum(n_flights),
     lon_from = lon_from[1],
@@ -137,34 +135,3 @@ odmatrix_passdist_month <- odmatrix_passdist %>%
 
 # export data
 fwrite(odmatrix_passdist_month, "data/air_odmatrix_month.csv")
-
-
-# calculate passxdist aggregated for before and after date
-odmatrix_passdist_filter_agreg <- odmatrix_passdist_filter[, .(total_passdist = sum(total_passdist, na.rm = TRUE),
-                                                               total_pass = sum(total_pass, na.rm=T),
-                                                               total_dist = sum(total_dist, na.rm = TRUE),
-                                                               n_flights = sum(n_flights, na.rm = TRUE),
-                                                               dist_pair = dist_pair[1],
-                                                               lon_from = lon_from[1],
-                                                               lat_from = lat_from[1],
-                                                               lon_to = lon_to[1],
-                                                               lat_to = lat_to[1]
-                                                               
-),
-by = .(name_muni_uf_from, name_muni_uf_to, period)]
-
-# deop zero's and origin = destinatiob
-odmatrix_passdist_filter_agreg <- odmatrix_passdist_filter_agreg[total_passdist != 0]
-odmatrix_passdist_filter_agreg <- odmatrix_passdist_filter_agreg[name_muni_uf_from != name_muni_uf_to]
-
-# refactor
-odmatrix_passdist_filter_agreg$period <- factor(odmatrix_passdist_filter_agreg$period,
-                                                levels = c("01Fev-15Mar", "16Mar-30Apri"),
-                                                labels = c("01Fev - 15Mar", "16Mar - 30Apr"))
-
-# order
-odmatrix_passdist_filter_agreg <- odmatrix_passdist_filter_agreg %>% 
-  arrange(period, desc(total_passdist))
-
-# export data
-fwrite(odmatrix_passdist_filter_agreg, "../../data/anac_covid/air_odmatrix_filter_agreg.csv")

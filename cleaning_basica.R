@@ -85,8 +85,6 @@ top_airplanes <- data_brazil_dists_first %>%
 # sum number of pass_dist by day OD pair
 odmatrix_passdist <- data_brazil_dists_first[,
                                              .(travel_time = mean(travel_time, na.rm = TRUE),
-                                               dist_pair = distance[1],
-                                               n_flights = .N,
                                                lon_from = lon_from[1],
                                                lat_from = lat_from[1],
                                                lon_to = lon_to[1],
